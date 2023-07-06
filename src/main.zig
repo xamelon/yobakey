@@ -6,6 +6,7 @@ const widget = @import("widget.zig");
 
 const Buf = @import("rect.zig").Buf;
 const Rect = @import("rect.zig").Rect;
+const Input = @import("rect.zig").Input;
 
 const term = mibu.term;
 const events = mibu.events;
@@ -32,32 +33,30 @@ pub fn main() !void {
     var buffer = try Buf.init(size.width, size.height, allocator);
 
     var rect = Rect{ .w = 50, .h = 20, .x = 10, .y = 10, .label = "Exercise", .allocator = allocator };
-    try rect.draw(&buffer);
+
+    var input = Input.init(10, 30, 50, 20, "Your Input", allocator);
 
     try stdout.writer().print("Press Ctrl-Q to exit..\n\r", .{});
+    try stdout.writer().print("{s}\n\r", .{clear.print.all});
     while (true) {
-        try stdout.writer().print("{s}\n\r", .{clear.print.all});
+        try rect.draw(&buffer);
+        try input.draw(&buffer);
+
+        try stdout.writer().print("{s}", .{cursor.print.goTo(0, 0)});
+
         for (buffer.lines.items) |word| {
             try stdout.writer().print("{s}", .{word.content});
             try color.resetAll(stdout.writer());
         }
-
-        switch (try events.next(stdin)) {
+        var event = try events.next(stdin);
+        try input.handleEvent(event);
+        switch (event) {
             .key => |k| switch (k) {
-                .char => |c| {
-                    try stdout.writer().print("{d}", .{c});
-                },
-                .delete => {
-                    if (buffer.lines.popOrNull()) |value| {
-                        _ = value;
-                        {}
-                    }
-                },
                 .ctrl => |c| switch (c) {
                     'c' => break,
                     else => {},
                 },
-                else => try stdout.writer().print("KEy: {s}\n\r", .{k}),
+                else => {},
             },
             else => {},
         }
