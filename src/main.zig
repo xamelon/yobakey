@@ -4,9 +4,10 @@ const mibu = @import("mibu");
 
 const widget = @import("widget.zig");
 
-const Buf = @import("rect.zig").Buf;
+const Buf = @import("buf.zig").Buf;
 const Rect = @import("rect.zig").Rect;
-const PlaceholderInput = @import("rect.zig").PlaceholderInput;
+const PlaceholderInput = @import("placeholder_input.zig").PlaceholderInput;
+const Label = @import("label.zig").Label;
 
 const term = mibu.term;
 const events = mibu.events;
@@ -14,13 +15,15 @@ const clear = mibu.clear;
 const cursor = mibu.cursor;
 const color = mibu.color;
 
+const Timer = std.time.Timer;
+
 pub fn main() !void {
     // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
     // stdout, not any debugging messages.
     const stdout = std.io.getStdOut();
     const stdin = std.io.getStdIn();
 
-    var raw_term = try term.enableRawMode(stdin.handle, .blocking);
+    var raw_term = try term.enableRawMode(stdin.handle, .nonblocking);
 
     defer raw_term.disableRawMode() catch {};
 
@@ -32,16 +35,26 @@ pub fn main() !void {
 
     var buffer = try Buf.init(size.width, size.height, allocator);
 
-    var rect = Rect{ .w = 50, .h = 20, .x = 10, .y = 10, .label = "Exercise" };
-
     var input = PlaceholderInput.init(10, 30, 50, 20, "Your Input", allocator);
-    input.placeholder = "hello other my boy";
+    input.placeholder = "hello hello boy";
+
+    var statsLabel = Label.init(10, 27, 50, 3, "Stats", "Hello my mini boy");
 
     try stdout.writer().print("Press Ctrl-Q to exit..\n\r", .{});
     try stdout.writer().print("{s}\n\r", .{clear.print.all});
+
+    var statsBuf: [100]u8 = undefined;
+
+    var timer = try Timer.start();
+
     while (true) {
-        rect.draw(&buffer);
+        statsLabel.content = std.fmt.bufPrint(&statsBuf, "Mistakes: {d} Time: {d}", .{
+            input.mistakesCount(),
+            30 - (timer.read() / 1000000000),
+        }) catch unreachable;
+
         input.draw(&buffer);
+        statsLabel.draw(&buffer);
         try buffer.print(stdout.writer());
 
         var event = try events.next(stdin);
