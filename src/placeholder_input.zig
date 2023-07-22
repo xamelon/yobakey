@@ -19,6 +19,7 @@ pub const PlaceholderInput = struct {
     rect: ?Rect = null,
     placeholder: []const u8 = "",
     content: std.ArrayList(u8) = undefined,
+    mistakesCount: u32 = 0,
 
     pub fn init(x: u32, y: u32, w: u32, h: u32, label: []const u8, allocator: std.mem.Allocator) PlaceholderInput {
         return PlaceholderInput{
@@ -79,12 +80,20 @@ pub const PlaceholderInput = struct {
         self.drawContent(buf);
     }
 
+    fn checkLastInput(self: *Self) void {
+        var idx = self.content.items.len - 1;
+        if (self.content.items[idx] != self.placeholder[idx]) {
+            self.mistakesCount += 1;
+        }
+    }
+
     pub fn handleEvent(self: *Self, event: events.Event) !void {
         switch (event) {
             .key => |k| switch (k) {
                 .char => |c| {
                     if (self.content.items.len + 1 <= self.placeholder.len) {
                         try self.content.append(@as(u8, @truncate(c)));
+                        self.checkLastInput();
                     }
                 },
                 .delete => {
@@ -94,15 +103,5 @@ pub const PlaceholderInput = struct {
             },
             else => {},
         }
-    }
-
-    pub fn mistakesCount(self: *Self) u32 {
-        var count: u32 = 0;
-        for (self.content.items, 0..) |c, i| {
-            if (c != self.placeholder[i]) {
-                count += 1;
-            }
-        }
-        return count;
     }
 };

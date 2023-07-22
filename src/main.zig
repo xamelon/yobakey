@@ -70,7 +70,7 @@ pub fn main() !void {
 
     while (true) {
         statsLabel.content = std.fmt.bufPrint(&statsBuf, "Mistakes: {d} Time: {d}", .{
-            input.mistakesCount(),
+            input.mistakesCount,
             10 - @as(i64, @intCast((timer.read() / 1000000000))),
         }) catch unreachable;
 
