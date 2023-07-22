@@ -27,6 +27,8 @@ pub fn main() !void {
 
     defer raw_term.disableRawMode() catch {};
 
+    defer stdout.writer().print("Have a good day!", .{}) catch unreachable;
+
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     const allocator = arena.allocator();
     defer arena.deinit();
@@ -36,7 +38,6 @@ pub fn main() !void {
     var buffer = try Buf.init(size.width, size.height, allocator);
 
     var input = PlaceholderInput.init(10, 30, 50, 20, "Your Input", allocator);
-    input.placeholder = "hello hello boy";
 
     var statsLabel = Label.init(10, 27, 50, 3, "Stats", "Hello my mini boy");
 
@@ -47,10 +48,30 @@ pub fn main() !void {
 
     var timer = try Timer.start();
 
+    const timestamp: u64 = @as(u64, @intCast(std.time.timestamp()));
+    var xoshiro = std.rand.DefaultPrng.init(timestamp);
+    var random = xoshiro.random();
+
+    var file = try std.fs.cwd().openFile("words.txt", std.fs.File.OpenFlags{});
+    var fileLen = try file.getEndPos();
+    var content = try file.readToEndAlloc(allocator, fileLen);
+    content = content[0 .. fileLen - 1];
+    var delimeted = std.mem.splitAny(u8, content, " \n");
+
+    var fileContent = std.ArrayList([]const u8).init(allocator);
+    var word: ?[]const u8 = delimeted.first();
+    while (word != null) : (word = delimeted.next()) {
+        try fileContent.append(word.?);
+    }
+    random.shuffle([]const u8, fileContent.items);
+    var newExercise = try std.mem.join(allocator, " ", fileContent.items);
+    fileContent.deinit();
+    input.placeholder = newExercise;
+
     while (true) {
         statsLabel.content = std.fmt.bufPrint(&statsBuf, "Mistakes: {d} Time: {d}", .{
             input.mistakesCount(),
-            30 - (timer.read() / 1000000000),
+            10 - @as(i64, @intCast((timer.read() / 1000000000))),
         }) catch unreachable;
 
         input.draw(&buffer);
@@ -70,8 +91,6 @@ pub fn main() !void {
             else => {},
         }
     }
-
-    try stdout.writer().print("Term size: {d} {d}", .{ size.width, size.height });
 }
 
 test "simple test" {
