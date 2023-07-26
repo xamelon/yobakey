@@ -4,9 +4,11 @@ const Buf = @import("buf.zig").Buf;
 
 const Rect = @import("rect.zig").Rect;
 
-const color = @import("mibu").color;
-const events = @import("mibu").events;
-const cursor = @import("mibu").cursor;
+const mibu = @import("mibu");
+
+const color = mibu.color;
+const events = mibu.events;
+const cursor = mibu.cursor;
 
 pub const PlaceholderInput = struct {
     const Self = @This();
@@ -56,10 +58,6 @@ pub const PlaceholderInput = struct {
                 buf.setCellModifier(x, y, fgColor);
             }
         }
-
-        cursor.goTo(std.io.getStdOut().writer(), 0, 0) catch |err| {
-            std.debug.print("{}", .{err});
-        };
     }
 
     fn drawPlaceholder(self: *Self, buf: *Buf) void {
@@ -77,6 +75,7 @@ pub const PlaceholderInput = struct {
     pub fn draw(self: *Self, buf: *Buf) void {
         self.rect.?.draw(buf);
         self.drawPlaceholder(buf);
+        self.updateCursorPos(buf) catch unreachable;
         self.drawContent(buf);
     }
 
@@ -87,17 +86,29 @@ pub const PlaceholderInput = struct {
         }
     }
 
-    pub fn handleEvent(self: *Self, event: events.Event) !void {
+    fn updateCursorPos(self: *Self, buf: *Buf) !void {
+        _ = buf;
+        var symbols = @as(u32, @intCast(self.content.items.len));
+        var x: u32 = self.x + 1 + @rem(symbols, (self.w - 2));
+        var y: u32 = self.y + 1 + symbols / (self.w - 2);
+        var cursorPos = try std.fmt.allocPrint(self.allocator, mibu.utils.csi ++ "{d};{d}H", .{ y + 1, x + 1 });
+        _ = cursorPos;
+        //buf.lines.items[buf.lines.items.len - 1].modifier = cursorPos;
+    }
+
+    pub fn handleEvent(self: *Self, event: events.Event, buf: *Buf) !void {
         switch (event) {
             .key => |k| switch (k) {
                 .char => |c| {
                     if (self.content.items.len + 1 <= self.placeholder.len) {
                         try self.content.append(@as(u8, @truncate(c)));
                         self.checkLastInput();
+                        try self.updateCursorPos(buf);
                     }
                 },
                 .delete => {
                     _ = self.content.pop();
+                    try self.updateCursorPos(buf);
                 },
                 else => {},
             },

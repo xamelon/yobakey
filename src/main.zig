@@ -37,9 +37,9 @@ pub fn main() !void {
 
     var buffer = try Buf.init(size.width, size.height, allocator);
 
-    var input = PlaceholderInput.init(10, 30, 50, 20, "Your Input", allocator);
+    var input = PlaceholderInput.init(0, 3, 50, 20, "Your Input", allocator);
 
-    var statsLabel = Label.init(10, 27, 50, 3, "Stats", "Hello my mini boy");
+    var statsLabel = Label.init(0, 0, 50, 3, "Stats", "Hello my mini boy");
 
     try stdout.writer().print("Press Ctrl-Q to exit..\n\r", .{});
     try stdout.writer().print("{s}\n\r", .{clear.print.all});
@@ -76,10 +76,10 @@ pub fn main() !void {
 
         input.draw(&buffer);
         statsLabel.draw(&buffer);
-        try buffer.print(stdout.writer());
+        try buffer.print(stdout.writer(), allocator);
 
         var event = try events.next(stdin);
-        try input.handleEvent(event);
+        try input.handleEvent(event, &buffer);
         switch (event) {
             .key => |k| switch (k) {
                 .ctrl => |c| switch (c) {
@@ -91,6 +91,8 @@ pub fn main() !void {
             else => {},
         }
     }
+
+    try mibu.clear.all(stdout.writer());
 }
 
 test "simple test" {

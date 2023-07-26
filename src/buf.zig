@@ -1,15 +1,15 @@
 const std = @import("std");
 
-const color = @import("mibu").color;
+const mibu = @import("mibu");
+
+const color = mibu.color;
+const cursor = mibu.cursor;
+const clear = mibu.clear;
 
 pub const Cell = struct {
     const Self = @This();
     content: u21 = ' ',
     modifier: []const u8 = undefined,
-
-    pub fn print(self: *Self, writer: anytype) !void {
-        try writer.write().print("{s}{s}", .{ self.content, self.modifier });
-    }
 };
 
 pub const Buf = struct {
@@ -54,9 +54,28 @@ pub const Buf = struct {
         self.lines.items[row + col].modifier = modifier;
     }
 
-    pub fn print(self: *Self, writer: anytype) !void {
+    pub fn print(self: *Self, writer: anytype, allocator: std.mem.Allocator) !void {
+        var output = std.ArrayList([]const u8).init(allocator);
+
         for (self.lines.items) |word| {
-            try writer.print("{s}{u}{s}", .{ word.modifier, word.content, color.print.reset });
+            var content = try std.fmt.allocPrint(allocator, "{s}{u}", .{
+                word.modifier,
+                word.content,
+            });
+
+            try output.append(content);
         }
+
+        var content = try std.mem.concat(allocator, u8, output.items);
+
+        try writer.print("{s}{s}{s}{s}{s}", .{
+            cursor.print.goTo(1, 1),
+            cursor.print.hide(),
+            content,
+            cursor.print.show(),
+            cursor.print.goTo(2, 5),
+        });
+
+        output.deinit();
     }
 };
