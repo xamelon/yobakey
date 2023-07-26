@@ -22,6 +22,7 @@ pub const PlaceholderInput = struct {
     placeholder: []const u8 = "",
     content: std.ArrayList(u8) = undefined,
     mistakesCount: u32 = 0,
+    cursorPos: struct { x: u32, y: u32 } = .{ .x = 1, .y = 1 },
 
     pub fn init(x: u32, y: u32, w: u32, h: u32, label: []const u8, allocator: std.mem.Allocator) PlaceholderInput {
         return PlaceholderInput{
@@ -91,9 +92,14 @@ pub const PlaceholderInput = struct {
         var symbols = @as(u32, @intCast(self.content.items.len));
         var x: u32 = self.x + 1 + @rem(symbols, (self.w - 2));
         var y: u32 = self.y + 1 + symbols / (self.w - 2);
-        var cursorPos = try std.fmt.allocPrint(self.allocator, mibu.utils.csi ++ "{d};{d}H", .{ y + 1, x + 1 });
-        _ = cursorPos;
-        //buf.lines.items[buf.lines.items.len - 1].modifier = cursorPos;
+        self.cursorPos = .{ .x = x, .y = y };
+    }
+
+    pub fn getCursorPos(self: *Self) type {
+        var symbols = @as(u32, @intCast(self.content.items.len));
+        var x: u32 = self.x + 1 + @rem(symbols, (self.w - 2));
+        var y: u32 = self.y + 1 + symbols / (self.w - 2);
+        return .{ .x = x, .y = y };
     }
 
     pub fn handleEvent(self: *Self, event: events.Event, buf: *Buf) !void {

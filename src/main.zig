@@ -17,6 +17,10 @@ const color = mibu.color;
 
 const Timer = std.time.Timer;
 
+pub const AppState = struct {
+    cursorPos: struct { x: u32, y: u32 } = .{ .x = 0, .y = 0 },
+};
+
 pub fn main() !void {
     // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
     // stdout, not any debugging messages.
@@ -40,13 +44,16 @@ pub fn main() !void {
     var input = PlaceholderInput.init(0, 3, 50, 20, "Your Input", allocator);
 
     var statsLabel = Label.init(0, 0, 50, 3, "Stats", "Hello my mini boy");
+    _ = statsLabel;
 
     try stdout.writer().print("Press Ctrl-Q to exit..\n\r", .{});
     try stdout.writer().print("{s}\n\r", .{clear.print.all});
 
     var statsBuf: [100]u8 = undefined;
+    _ = statsBuf;
 
     var timer = try Timer.start();
+    _ = timer;
 
     const timestamp: u64 = @as(u64, @intCast(std.time.timestamp()));
     var xoshiro = std.rand.DefaultPrng.init(timestamp);
@@ -68,18 +75,28 @@ pub fn main() !void {
     fileContent.deinit();
     input.placeholder = newExercise;
 
-    while (true) {
-        statsLabel.content = std.fmt.bufPrint(&statsBuf, "Mistakes: {d} Time: {d}", .{
-            input.mistakesCount,
-            10 - @as(i64, @intCast((timer.read() / 1000000000))),
-        }) catch unreachable;
+    var appState = AppState{};
 
-        input.draw(&buffer);
-        statsLabel.draw(&buffer);
-        try buffer.print(stdout.writer(), allocator);
+    while (true) {
+        // statsLabel.content = std.fmt.bufPrint(&statsBuf, "Mistakes: {d} Time: {d}", .{
+        //     input.mistakesCount,
+        //     10 - @as(i64, @intCast((timer.read() / 1000000000))),
+        // }) catch unreachable;
+
+        // input.draw(&buffer);
+        // statsLabel.draw(&buffer);
+
+        // appState.cursorPos = .{ .x = input.cursorPos.x, .y = input.cursorPos.y };
+
+        try drawBuffer(
+            stdout.writer(),
+            allocator,
+            &buffer,
+            &appState,
+        );
 
         var event = try events.next(stdin);
-        try input.handleEvent(event, &buffer);
+        //try input.handleEvent(event, &buffer);
         switch (event) {
             .key => |k| switch (k) {
                 .ctrl => |c| switch (c) {
@@ -93,6 +110,25 @@ pub fn main() !void {
     }
 
     try mibu.clear.all(stdout.writer());
+}
+
+fn drawBuffer(
+    writer: anytype,
+    allocator: std.mem.Allocator,
+    buf: *Buf,
+    appState: *AppState,
+) !void {
+    const bufContent = try buf.print(allocator);
+
+    try writer.print("{s}{s}{s}{s}{s}", .{
+        cursor.print.goTo(1, 1),
+        cursor.print.hide(),
+        bufContent,
+        cursor.print.show(),
+        cursor.print.goTo(appState.cursorPos.x + 1, appState.cursorPos.y + 1),
+    });
+
+    allocator.free(bufContent);
 }
 
 test "simple test" {

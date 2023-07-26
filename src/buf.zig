@@ -54,28 +54,19 @@ pub const Buf = struct {
         self.lines.items[row + col].modifier = modifier;
     }
 
-    pub fn print(self: *Self, writer: anytype, allocator: std.mem.Allocator) !void {
+    pub fn print(self: *Self, allocator: std.mem.Allocator) ![]const u8 {
         var output = std.ArrayList([]const u8).init(allocator);
 
         for (self.lines.items) |word| {
-            var content = try std.fmt.allocPrint(allocator, "{s}{u}", .{
-                word.modifier,
-                word.content,
-            });
+            var content = try std.fmt.allocPrint(allocator, "{s}{u}{s}", .{ word.modifier, word.content, color.print.reset });
 
             try output.append(content);
         }
 
         var content = try std.mem.concat(allocator, u8, output.items);
 
-        try writer.print("{s}{s}{s}{s}{s}", .{
-            cursor.print.goTo(1, 1),
-            cursor.print.hide(),
-            content,
-            cursor.print.show(),
-            cursor.print.goTo(2, 5),
-        });
-
         output.deinit();
+
+        return content;
     }
 };
