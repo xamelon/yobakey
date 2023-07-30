@@ -1,8 +1,6 @@
 const std = @import("std");
 
-const mibu = @import("mibu");
-
-const widget = @import("widget.zig");
+const mibu = @import("mibu/src/main.zig");
 
 const Buf = @import("buf.zig").Buf;
 const Rect = @import("rect.zig").Rect;
@@ -39,21 +37,19 @@ pub fn main() !void {
 
     var size = try term.getSize(0);
 
-    var buffer = try Buf.init(size.width, size.height, allocator);
+    var buffer1 = try Buf.init(size.width, size.height, allocator);
+    var buffer2 = try Buf.init(size.width, size.height, allocator);
 
     var input = PlaceholderInput.init(0, 3, 50, 20, "Your Input", allocator);
 
     var statsLabel = Label.init(0, 0, 50, 3, "Stats", "Hello my mini boy");
-    _ = statsLabel;
 
     try stdout.writer().print("Press Ctrl-Q to exit..\n\r", .{});
-    try stdout.writer().print("{s}\n\r", .{clear.print.all});
+    try stdout.writer().print("{s}", .{clear.print.all});
 
     var statsBuf: [100]u8 = undefined;
-    _ = statsBuf;
 
     var timer = try Timer.start();
-    _ = timer;
 
     const timestamp: u64 = @as(u64, @intCast(std.time.timestamp()));
     var xoshiro = std.rand.DefaultPrng.init(timestamp);
@@ -77,26 +73,22 @@ pub fn main() !void {
 
     var appState = AppState{};
 
+    var currentBuffer: *Buf = &buffer1;
+    var prevBuffer: *Buf = &buffer2;
+
     while (true) {
-        // statsLabel.content = std.fmt.bufPrint(&statsBuf, "Mistakes: {d} Time: {d}", .{
-        //     input.mistakesCount,
-        //     10 - @as(i64, @intCast((timer.read() / 1000000000))),
-        // }) catch unreachable;
+        statsLabel.content = std.fmt.bufPrint(&statsBuf, "Mistakes: {d} Time: {d}", .{
+            input.mistakesCount,
+            10 - @as(i64, @intCast((timer.read() / 1000000000))),
+        }) catch unreachable;
 
-        // input.draw(&buffer);
-        // statsLabel.draw(&buffer);
+        input.draw(currentBuffer);
+        statsLabel.draw(currentBuffer);
 
-        // appState.cursorPos = .{ .x = input.cursorPos.x, .y = input.cursorPos.y };
-
-        try drawBuffer(
-            stdout.writer(),
-            allocator,
-            &buffer,
-            &appState,
-        );
+        appState.cursorPos = .{ .x = input.cursorPos.x, .y = input.cursorPos.y };
 
         var event = try events.next(stdin);
-        //try input.handleEvent(event, &buffer);
+        try input.handleEvent(event, currentBuffer);
         switch (event) {
             .key => |k| switch (k) {
                 .ctrl => |c| switch (c) {
@@ -107,6 +99,21 @@ pub fn main() !void {
             },
             else => {},
         }
+
+        try drawBuffer(
+            stdout.writer(),
+            currentBuffer,
+            prevBuffer,
+            &appState,
+        );
+
+        if (currentBuffer == &buffer1) {
+            currentBuffer = &buffer2;
+            prevBuffer = &buffer1;
+        } else {
+            currentBuffer = &buffer1;
+            prevBuffer = &buffer2;
+        }
     }
 
     try mibu.clear.all(stdout.writer());
@@ -114,11 +121,14 @@ pub fn main() !void {
 
 fn drawBuffer(
     writer: anytype,
-    allocator: std.mem.Allocator,
     buf: *Buf,
+    prevBuffer: *Buf,
     appState: *AppState,
 ) !void {
-    const bufContent = try buf.print(allocator);
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    const allocator = arena.allocator();
+
+    const bufContent = try buf.print(prevBuffer, allocator);
 
     try writer.print("{s}{s}{s}{s}{s}", .{
         cursor.print.goTo(1, 1),
@@ -128,12 +138,5 @@ fn drawBuffer(
         cursor.print.goTo(appState.cursorPos.x + 1, appState.cursorPos.y + 1),
     });
 
-    allocator.free(bufContent);
-}
-
-test "simple test" {
-    var list = std.ArrayList(i32).init(std.testing.allocator);
-    defer list.deinit(); // try commenting this out and see if zig detects the memory leak!
-    try list.append(42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
+    arena.deinit();
 }

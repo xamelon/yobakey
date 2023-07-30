@@ -4,7 +4,7 @@ const Buf = @import("buf.zig").Buf;
 
 const Rect = @import("rect.zig").Rect;
 
-const mibu = @import("mibu");
+const mibu = @import("mibu/src/main.zig");
 
 const color = mibu.color;
 const events = mibu.events;

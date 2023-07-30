@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const mibu = @import("mibu");
+const mibu = @import("mibu/src/main.zig");
 
 const events = mibu.events;
 const color = mibu.color;
