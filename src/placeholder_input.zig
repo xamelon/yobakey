@@ -113,8 +113,10 @@ pub const PlaceholderInput = struct {
                     }
                 },
                 .delete => {
-                    _ = self.content.pop();
-                    try self.updateCursorPos(buf);
+                    if (self.content.items.len > 0) {
+                        _ = self.content.pop();
+                        try self.updateCursorPos(buf);
+                    }
                 },
                 else => {},
             },

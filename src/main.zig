@@ -87,19 +87,6 @@ pub fn main() !void {
 
         appState.cursorPos = .{ .x = input.cursorPos.x, .y = input.cursorPos.y };
 
-        var event = try events.next(stdin);
-        try input.handleEvent(event, currentBuffer);
-        switch (event) {
-            .key => |k| switch (k) {
-                .ctrl => |c| switch (c) {
-                    'c' => break,
-                    else => {},
-                },
-                else => {},
-            },
-            else => {},
-        }
-
         try drawBuffer(
             stdout.writer(),
             currentBuffer,
@@ -113,6 +100,19 @@ pub fn main() !void {
         } else {
             currentBuffer = &buffer1;
             prevBuffer = &buffer2;
+        }
+
+        var event = try events.next(stdin);
+        try input.handleEvent(event, currentBuffer);
+        switch (event) {
+            .key => |k| switch (k) {
+                .ctrl => |c| switch (c) {
+                    'c' => break,
+                    else => {},
+                },
+                else => {},
+            },
+            else => {},
         }
     }
 

@@ -65,17 +65,20 @@ pub const Buf = struct {
     pub fn print(self: *Self, prevBuf: *Buf, allocator: std.mem.Allocator) ![]const u8 {
         var output = std.ArrayList([]u8).init(allocator);
 
-        var y: u32 = 0;
-        var x: u32 = 0;
-        while (x * y < self.h * self.w) {
-            var cell = self.lines.items[x * y];
-            var prevCell = prevBuf.lines.items[x * y];
-            if (cell.content != prevCell.content) {
+        var row: u32 = 0;
+        var col: u32 = 0;
+        while (row * self.w + col < self.lines.items.len) {
+            const cell = self.lines.items[row * self.w + col];
+            const prevCell = prevBuf.lines.items[row * self.w + col];
+
+            if (cell.content != prevCell.content or
+                !std.mem.eql(u8, cell.modifier, prevCell.modifier))
+            {
                 var cellContent = try std.fmt.allocPrint(
                     allocator,
                     "{s}{s}{u}{s}",
                     .{
-                        cursor.print.goTo(x + 1, y),
+                        cursor.print.goTo(col + 1, row + 1),
                         cell.modifier,
                         cell.content,
                         color.print.reset,
@@ -85,11 +88,11 @@ pub const Buf = struct {
                 try output.append(cellContent);
             }
 
-            if (x == self.w - 1) {
-                x = 0;
-                y = y + 1;
+            if (col == self.w - 1) {
+                col = 0;
+                row = row + 1;
             } else {
-                x = x + 1;
+                col = col + 1;
             }
         }
 
@@ -97,6 +100,9 @@ pub const Buf = struct {
 
         var content = try std.mem.concat(allocator, u8, items);
 
+        for (items) |item| {
+            allocator.free(item);
+        }
         output.deinit();
         allocator.free(items);
 
@@ -112,8 +118,12 @@ test "testing print buffer" {
     defer buf.deinit();
     defer buf2.deinit();
 
-    buf.setCellContentChar(1, 1, 'c');
+    buf.setCellContentChar(0, 0, 'c');
 
     const pprint = buf.print(&buf2, allocator) catch unreachable;
-    allocator.free(pprint);
+    defer allocator.free(pprint);
+    std.debug.print("{s}", .{pprint});
+    const template: []const u8 = "\x1b[1;1Hc\x1b[0m";
+
+    try std.testing.expectEqualSlices(u8, template, pprint);
 }
