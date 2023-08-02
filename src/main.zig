@@ -6,6 +6,7 @@ const Buf = @import("buf.zig").Buf;
 const Rect = @import("rect.zig").Rect;
 const PlaceholderInput = @import("placeholder_input.zig").PlaceholderInput;
 const Label = @import("label.zig").Label;
+const layout = @import("layout.zig");
 
 const term = mibu.term;
 const events = mibu.events;
@@ -76,16 +77,20 @@ pub fn main() !void {
     var currentBuffer: *Buf = &buffer1;
     var prevBuffer: *Buf = &buffer2;
 
+    var window = layout.Layout.init(allocator);
+
+    try window.addChild(layout.LayoutChildren{ .label = &statsLabel });
+    try window.addChild(layout.LayoutChildren{ .input = &input });
+
     while (true) {
         statsLabel.content = std.fmt.bufPrint(&statsBuf, "Mistakes: {d} Time: {d}", .{
             input.mistakesCount,
             10 - @as(i64, @intCast((timer.read() / 1000000000))),
         }) catch unreachable;
 
-        input.draw(currentBuffer);
-        statsLabel.draw(currentBuffer);
-
         appState.cursorPos = .{ .x = input.cursorPos.x, .y = input.cursorPos.y };
+
+        window.draw(currentBuffer);
 
         try drawBuffer(
             stdout.writer(),
