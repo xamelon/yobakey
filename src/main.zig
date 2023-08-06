@@ -8,6 +8,8 @@ const PlaceholderInput = @import("placeholder_input.zig").PlaceholderInput;
 const Label = @import("label.zig").Label;
 const layout = @import("layout.zig");
 
+const exercise = @import("exercise.zig");
+
 const term = mibu.term;
 const events = mibu.events;
 const clear = mibu.clear;
@@ -52,24 +54,8 @@ pub fn main() !void {
 
     var timer = try Timer.start();
 
-    const timestamp: u64 = @as(u64, @intCast(std.time.timestamp()));
-    var xoshiro = std.rand.DefaultPrng.init(timestamp);
-    var random = xoshiro.random();
+    var newExercise = try exercise.loadIncluded(allocator);
 
-    var file = try std.fs.cwd().openFile("words.txt", std.fs.File.OpenFlags{});
-    var fileLen = try file.getEndPos();
-    var content = try file.readToEndAlloc(allocator, fileLen);
-    content = content[0 .. fileLen - 1];
-    var delimeted = std.mem.splitAny(u8, content, " \n");
-
-    var fileContent = std.ArrayList([]const u8).init(allocator);
-    var word: ?[]const u8 = delimeted.first();
-    while (word != null) : (word = delimeted.next()) {
-        try fileContent.append(word.?);
-    }
-    random.shuffle([]const u8, fileContent.items);
-    var newExercise = try std.mem.join(allocator, " ", fileContent.items);
-    fileContent.deinit();
     input.placeholder = newExercise;
 
     var appState = AppState{};
